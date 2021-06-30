@@ -81,6 +81,7 @@ func Provider() *schema.Provider {
 			"tfe_team_access":             dataSourceTFETeamAccess(),
 			"tfe_workspace":               dataSourceTFEWorkspace(),
 			"tfe_workspace_ids":           dataSourceTFEWorkspaceIDs(),
+			"tfe_workspace_outputs":       dataSourceTFEWorkspaceOutputs(),
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
