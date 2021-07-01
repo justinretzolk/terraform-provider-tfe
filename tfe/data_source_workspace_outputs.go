@@ -16,11 +16,11 @@ func dataSourceTFEWorkspaceOutputs() *schema.Resource {
 			"outputs": {
 				Type:     schema.TypeMap,
 				Computed: true,
-				Elem: &schema.Schema{
-					Type:     schema.TypeMap,
-					Computed: true,
-					Elem:     &schema.Schema{Type: schema.TypeString},
-				},
+				//				Elem: &schema.Schema{
+				//					Type:     schema.TypeMap,
+				//					Computed: true,
+				//Elem: &schema.Schema{Type: schema.TypeString},
+				//				},
 			},
 			"workspace_id": {
 				Type:     schema.TypeString,
@@ -35,6 +35,7 @@ func dataSourceTFEWorkspaceOutputsRead(d *schema.ResourceData, meta interface{})
 
 	// Get the workspace ID.
 	workspaceID := d.Get("workspace_id").(string)
+	d.Set("workspace_id", workspaceID)
 
 	// Get the current state version of the workspace.
 	sv, err := tfeClient.StateVersions.Current(ctx, workspaceID)
@@ -43,45 +44,26 @@ func dataSourceTFEWorkspaceOutputsRead(d *schema.ResourceData, meta interface{})
 			"Error retrieving current state version of workspace %s: %v", workspaceID, err)
 	}
 
+	moutputs := make(map[string]string, 0)
+
 	// Get the value of each output found in the most recent state version
 	if sv.Outputs != nil {
-		for k, o := range sv.Outputs {
+		for _, o := range sv.Outputs {
 			wo, err := tfeClient.StateVersionOutputs.Read(ctx, o.ID)
 			if err != nil {
 				return fmt.Errorf(
 					"Error retrieving state version output %s: %v", o.ID, err)
 			}
-			sv.Outputs[k] = wo
+			moutputs[wo.Name] = wo.Value
 		}
 	}
-	outputs := flattenTFEWorkspaceOutputs(&sv.Outputs)
-	log.Printf("outputs: %v\n type: %T", outputs, outputs)
+	log.Printf("outputs: %#v", moutputs)
 
-	if err := d.Set("outputs", outputs); err != nil {
+	d.SetId(workspaceID)
+	if err := d.Set("outputs", moutputs); err != nil {
 		return fmt.Errorf(
 			"Error setting workspace outputs: %v", err)
 	}
 
 	return nil
-}
-
-func flattenTFEWorkspaceOutputs(outputs *[]*tfe.StateVersionOutput) map[string]interface{} {
-	if outputs != nil {
-		o := make(map[string]interface{}, len(*outputs))
-
-		for _, v := range *outputs {
-			oi := make(map[string]interface{})
-
-			oi["name"] = v.Name
-			//			oi["sensitive"] = v.Sensitive
-			oi["type"] = v.Type
-			oi["value"] = v.Value
-			o[v.ID] = oi
-		}
-
-		return o
-	}
-
-	return make(map[string]interface{}, 0)
-
 }
